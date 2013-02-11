@@ -45,7 +45,7 @@ class BasePlugin(object):
     def _get_photos(self, album_url):
         raise NotImplementedError
 
-    def _get_tree(self, url):
+    def _get_tree(self, url, language='html'):
         self.log('get_tree opening url "%s"' % url)
         req = urllib2.Request(url)
         try:
@@ -53,7 +53,7 @@ class BasePlugin(object):
             self.log('get_tree received %d bytes' % len(html))
         except urllib2.HTTPError, error:
             self.log('HTTPError: %s' % error)
-        tree = BeautifulSoup(html, convertEntities='html')
+        tree = BeautifulSoup(html, convertEntities=language)
         return tree
 
     def _collapse(self, iterable):
@@ -374,6 +374,48 @@ class TimeLightbox(BasePlugin):
         return '%s?w=1178' % path
 
 
+class NewYorkTimesLens(BasePlugin):
+
+    _title = "NewYorkTimes.com: Lens Blog"
+
+    def _get_albums(self):
+        self._albums = []
+        url = 'http://lens.blogs.nytimes.com/asset-data/'
+        tree = self._get_tree(url, language='xml')
+        for id, album in enumerate(tree.findAll('post')):
+            self._albums.append({
+                'title': album.title.string,
+                'album_id': id,
+                'pic': self.__build_img(album.photo.url.string),
+                'description': self.__text(album.excerpt.string),
+                'album_url': album.asset.string}
+            )
+        return self._albums
+
+    def _get_photos(self, album_url):
+        self._photos[album_url] = []
+        tree = self._get_tree(album_url, language='xml')
+        for id, slide in enumerate(tree.findAll('slide')):
+            photo = slide.photo
+            self._photos[album_url].append({
+                'title': 'by %s' % photo.credit.string,
+                'photo_id': id,
+                'pic': photo.url.string,
+                'description': self.__text(photo.caption.string),
+                'album_url': album_url
+            })
+        return self._photos[album_url]
+
+    @staticmethod
+    def __build_img(url):
+        url = url.replace('-custom2', '-jumbo').replace('-custom3', '-jumbo')
+        return url.replace('-custom1', '-jumbo')
+
+    @staticmethod
+    def __text(txt):
+        return txt.replace('&#x2019;s', "'")
+
+
 def get_scrapers():
     ENABLED_SCRAPERS = (
         TheBigPictures,
@@ -381,7 +423,8 @@ def get_scrapers():
         SacBeeFrame,
         WallStreetJournal,
         TotallyCoolPix,
-        TimeLightbox
+        TimeLightbox,
+        NewYorkTimesLens,
     )
     scrapers = [scraper(i) for i, scraper in enumerate(ENABLED_SCRAPERS)]
     return scrapers
