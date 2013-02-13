@@ -399,6 +399,7 @@ class NewYorkTimesLens(BasePlugin):
             photo = slide.photo
             self._photos[album_url].append({
                 'title': 'by %s' % photo.credit.string,
+                'album_title': album_url.split('/')[-1].split('.')[0],
                 'photo_id': id,
                 'pic': photo.url.string,
                 'description': self.__text(photo.caption.string),
