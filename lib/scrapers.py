@@ -22,6 +22,8 @@ import json
 import urllib2
 from BeautifulSoup import BeautifulSoup
 
+import xbmc
+
 
 class BasePlugin(object):
 
@@ -64,9 +66,9 @@ class BasePlugin(object):
         return self._title
 
     def log(self, msg):
-        print u'TheBigPictures ScraperPlugin[%s]: %s' % (
+        xbmc.log('TheBigPictures ScraperPlugin[%s]: %s' % (
             self.__class__.__name__, msg
-        )
+        ))
 
 
 class TheBigPictures(BasePlugin):

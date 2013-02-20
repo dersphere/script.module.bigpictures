@@ -20,6 +20,8 @@
 import random
 import scrapers
 
+import xbmc
+
 
 class ScraperManager(object):
 
@@ -88,7 +90,7 @@ class ScraperManager(object):
         return self._scrapers[self._current_index]
 
     def log(self, msg):
-        print u'TheBigPictures Manager: %s' % msg
+        xbmc.log('TheBigPictures Manager: %s' % msg)
 
 
 def test():
