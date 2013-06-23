@@ -92,7 +92,6 @@ class BasePlugin(object):
         for sub_class in cls.__subclasses__():
             if sub_class.__name__ in name_list:
                 enabled_scrapers.append(sub_class)
-                print '%s in %s' % (sub_class.__name__, name_list)
         return enabled_scrapers
 
 
