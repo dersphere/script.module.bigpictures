@@ -111,11 +111,13 @@ class TheBigPictures(BasePlugin):
             if not d:
                 continue
             description = self._collapse(d.contents)
-            pic = album.find('img')['src']
+            pic = album.find('img', {'class': 'bpImage'})
+            if not pic:
+                continue
             self._albums.append({
                 'title': title,
                 'album_id': id,
-                'pic': pic,
+                'pic': pic['src'],
                 'description': description,
                 'album_url': album_url}
             )
