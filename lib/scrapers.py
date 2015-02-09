@@ -21,6 +21,8 @@ import re
 import json
 import urllib2
 from BeautifulSoup import BeautifulSoup
+from CommonFunctions import parseDOM, stripTags
+import HTMLParser
 
 try:
     import xbmc
@@ -107,42 +109,47 @@ class BasePlugin(object):
 
 class TheBigPictures(BasePlugin):
 
-    _title = 'Boston.com: The Big Picture'
+    _title = 'The Boston Globe: The Big Picture'
 
     def _get_albums(self):
         self._albums = []
-        url = 'http://www.boston.com/bigpicture/'
-        tree = self._get_tree(url)
-        albums = tree.findAll('div', 'headDiv2')
+        url = 'http://www.bostonglobe.com/news/bigpicture'
+
+        codePD = urllib2.urlopen(url).read()
+        albums = parseDOM(codePD, 'section')
+        h = HTMLParser.HTMLParser()
+
         for id, album in enumerate(albums):
-            title = album.find('a').string
-            album_url = album.find('a')['href']
-            d = album.find('div', {'class': 'bpBody'})
+            title = parseDOM(album, 'a')[0]
+            album_url = 'http://www.bostonglobe.com' + parseDOM(album, 'a', ret='href')[0]
+            self.log('Album URL: %s' % album_url)
+            d = parseDOM(album, 'div', attrs={'class': 'subhead geor'})[0]
             if not d:
                 continue
-            description = self._collapse(d.contents)
-            pic = album.find('img', {'class': 'bpImage'})
+            description = stripTags(h.unescape(d))
+            pic = 'http:' + urllib2.quote(parseDOM(album, 'img', ret='src')[0])
             if not pic:
                 continue
             self._albums.append({
                 'title': title,
                 'album_id': id,
-                'pic': pic['src'],
+                'pic': pic,
                 'description': description,
-                'album_url': album_url}
-            )
+                'album_url': album_url})
+
         return self._albums
 
     def _get_photos(self, album_url):
+        self.log('Album: %s' % album_url)
         self._photos[album_url] = []
-        tree = self._get_tree(album_url)
-        album_title = tree.find('h2').a.string
-        images = tree.findAll('div', {'class':
-                                      re.compile('bpImageTop|bpBoth')})
+        codePD = urllib2.urlopen(album_url).read()
+        album_title = parseDOM(codePD, 'title')[0]
+        images = parseDOM(codePD, 'div', attrs={'class': 'photo'})
+        descs = parseDOM(codePD, 'article', attrs={'class': 'pcaption'})
+
         for id, photo in enumerate(images):
-            pic = photo.img['src']
-            d = photo.find('div', {'class': 'bpCaption'}).contents
-            description = self._collapse(d).rstrip('#')
+            pic = 'http:' + urllib2.quote(parseDOM(photo, 'img', ret='src')[0])
+            description = stripTags(parseDOM(descs[id], 'div', attrs={'class': 'gcaption geor'})[0])
             self._photos[album_url].append({
                 'title': '%d - %s' % (id + 1, album_title),
                 'album_title': album_title,
@@ -152,7 +159,6 @@ class TheBigPictures(BasePlugin):
                 'album_url': album_url
             })
         return self._photos[album_url]
-
 
 class AtlanticInFocus(BasePlugin):
 
