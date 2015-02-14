@@ -51,6 +51,7 @@ class BasePlugin(object):
         self._albums = []
         self._photos = {}
         self._id = _id
+        self._parser = HTMLParser.HTMLParser()
 
     def get_albums(self):
         return self._albums or self._get_albums()
@@ -65,13 +66,7 @@ class BasePlugin(object):
         raise NotImplementedError
 
     def _get_tree(self, url, language='html'):
-        self.log('get_tree opening url "%s"' % url)
-        req = urllib2.Request(url)
-        try:
-            html = urllib2.urlopen(req).read()
-            self.log('get_tree received %d bytes' % len(html))
-        except urllib2.HTTPError, error:
-            self.log('HTTPError: %s' % error)
+        html = self._get_html(url)
         try:
             tree = BeautifulSoup(html, convertEntities=language)
         except TypeError:
@@ -80,6 +75,13 @@ class BasePlugin(object):
             html = html.decode('utf-8', 'ignore')
             tree = BeautifulSoup(html, convertEntities=language)
         return tree
+
+    def _get_html(self, url):
+        self.log('_get_html opening url "%s"' % url)
+        req = urllib2.Request(url)
+        html = urllib2.urlopen(req).read()
+        self.log('get_tree received %d bytes' % len(html))
+        return html
 
     def _collapse(self, iterable):
         return u''.join([e.string.strip() for e in iterable if e.string])
@@ -115,46 +117,42 @@ class TheBigPictures(BasePlugin):
         self._albums = []
         url = 'http://www.bostonglobe.com/news/bigpicture'
 
-        codePD = urllib2.urlopen(url).read()
-        albums = parseDOM(codePD, 'section')
-        h = HTMLParser.HTMLParser()
+        html = self._get_html(url)
 
-        for id, album in enumerate(albums):
+        for _id, album in enumerate(parseDOM(html, 'section')):
             title = parseDOM(album, 'a')[0]
             album_url = 'http://www.bostonglobe.com' + parseDOM(album, 'a', ret='href')[0]
-            self.log('Album URL: %s' % album_url)
             d = parseDOM(album, 'div', attrs={'class': 'subhead geor'})[0]
             if not d:
                 continue
-            description = stripTags(h.unescape(d))
-            pic = 'http:' + urllib2.quote(parseDOM(album, 'img', ret='src')[0])
+            description = stripTags(self._parser.unescape(d))
+            pic = urllib2.quote(parseDOM(album, 'img', ret='src')[0])
             if not pic:
                 continue
             self._albums.append({
                 'title': title,
-                'album_id': id,
-                'pic': pic,
+                'album_id': _id,
+                'pic': 'http:' + pic,
                 'description': description,
                 'album_url': album_url})
 
         return self._albums
 
     def _get_photos(self, album_url):
-        self.log('Album: %s' % album_url)
         self._photos[album_url] = []
-        codePD = urllib2.urlopen(album_url).read()
-        album_title = parseDOM(codePD, 'title')[0]
-        images = parseDOM(codePD, 'div', attrs={'class': 'photo'})
-        descs = parseDOM(codePD, 'article', attrs={'class': 'pcaption'})
+        html = self._get_html(album_url)
+        album_title = parseDOM(html, 'title')[0]
+        images = parseDOM(html, 'div', attrs={'class': 'photo'})
+        descs = parseDOM(html, 'article', attrs={'class': 'pcaption'})
 
-        for id, photo in enumerate(images):
-            pic = 'http:' + urllib2.quote(parseDOM(photo, 'img', ret='src')[0])
-            description = stripTags(parseDOM(descs[id], 'div', attrs={'class': 'gcaption geor'})[0])
+        for _id, photo in enumerate(images):
+            pic = urllib2.quote(parseDOM(photo, 'img', ret='src')[0])
+            description = stripTags(parseDOM(descs[_id], 'div', attrs={'class': 'gcaption geor'})[0])
             self._photos[album_url].append({
-                'title': '%d - %s' % (id + 1, album_title),
+                'title': '%d - %s' % (_id + 1, album_title),
                 'album_title': album_title,
-                'photo_id': id,
-                'pic': pic,
+                'photo_id': _id,
+                'pic': 'http:' + pic,
                 'description': description,
                 'album_url': album_url
             })
