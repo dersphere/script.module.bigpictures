@@ -312,13 +312,14 @@ class TotallyCoolPix(BasePlugin):
         self._albums = []
         url = 'http://totallycoolpix.com/'
         tree = self._get_tree(url)
-        section = tree.find('div', {'class': 'pri'})
-        albums = section.findAll('div', {'class': 'block'})
+        albums = tree.findAll('div', {'class': 'item'})
         for id, album in enumerate(albums):
-            title = album.find('h1').a.string
-            album_url = album.find('h1').a['href']
-            d = album.find('div', {'class': 'post-intro'}).p.contents
-            description = self._collapse(d)
+            if not album.find('a', {'class': 'open'}):
+                continue
+            title = album.find('h2').string
+            album_url = album.find('a')['href']
+            p = album.find('p')
+            description = self._collapse(p.contents) if p else ''
             pic = album.find('img')['src']
             self._albums.append({
                 'title': title,
@@ -332,18 +333,18 @@ class TotallyCoolPix(BasePlugin):
     def _get_photos(self, album_url):
         self._photos[album_url] = []
         tree = self._get_tree(album_url)
-        album_title = tree.find('h1').a.string
-        photos = tree.findAll('div', {
-            'class': re.compile('^wp-caption')
-        })
-        for id, photo in enumerate(photos):
-            pic = photo.img['src']
-            description = self._collapse(photo.p.contents)
+        album_title = tree.find('h2').string
+        for id, photo in enumerate(tree.findAll('div', {'class': 'image'})):
+            print photo
+            img = photo.find('img')
+            if not img:
+                continue
+            description = self._collapse(photo.find('p', {'class': 'info-txt'}).contents)
             self._photos[album_url].append({
                 'title': '%d - %s' % (id + 1, album_title),
                 'album_title': album_title,
                 'photo_id': id,
-                'pic': pic,
+                'pic': img['src'],
                 'description': description,
                 'album_url': album_url
             })
