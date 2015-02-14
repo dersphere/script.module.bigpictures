@@ -165,43 +165,41 @@ class AtlanticInFocus(BasePlugin):
     def _get_albums(self):
         self._albums = []
         url = 'http://www.theatlantic.com/infocus/'
-        tree = self._get_tree(url)
-        section = tree.find('div', {'class': 'middle'})
-        headlines = section.findAll('h1', {'class': 'headline'})
-        descriptions = section.findAll('div', {'class': 'dek'})
-        images = section.findAll('span', 'if1280')
-        for id, node in enumerate(headlines):
-            title = node.a.string
-            album_url = headlines[id].a['href']
-            d = descriptions[id].p.contents
-            description = self._collapse(d).replace('\n', '')
-            pic = images[id].find('img')['src']
-            self._albums.append({
-                'title': title,
-                'album_id': id,
-                'pic': pic,
-                'description': description,
-                'album_url': album_url}
-            )
+        html = self._get_html(url)
+        pattern = r'@media\(min-width:1632px\){#river1 \.lead-image{background-image:url\((.+?)\)'
+        for _id, li in enumerate(parseDOM(html, 'li', attrs={'class': 'article'})):
+            headline = parseDOM(li, 'h1')[0]
+            match = re.search(pattern.replace('river1', 'river%d' % (_id + 1)), html)
+            if match:
+                self._albums.append({
+                    'title': parseDOM(headline, 'a')[0],
+                    'album_id': _id,
+                    'pic': match.group(1),
+                    'description': stripTags(self._parser.unescape(parseDOM(li, 'p', attrs={'class': 'dek'})[0])),
+                    'album_url': 'http://www.theatlantic.com' + parseDOM(headline, 'a', ret='href')[0],
+                })
         return self._albums
 
     def _get_photos(self, album_url):
         self._photos[album_url] = []
-        tree = self._get_tree(album_url)
-        album_title = tree.find('h1', 'headline').string
-        images = tree.findAll('span', {'class': 'if1024'})
-        for id, photo in enumerate(images):
-            pic = photo.find('img')['src']
-            d = photo.find('div', 'imgCap').contents
-            description = self._collapse(d)
-            self._photos[album_url].append({
-                'title': '%d - %s' % (id + 1, album_title),
-                'album_title': album_title,
-                'photo_id': id,
-                'pic': pic,
-                'description': description,
-                'album_url': album_url
-            })
+        html = self._get_html(album_url)
+        pattern = r'@media\(min-width:1592px\){#img01 \.img{background-image:url\((.+?)\)'
+        id_pattern = re.compile(r'#img(\d\d)')
+        album_title = parseDOM(html, 'title')[0]
+        for _id, p in enumerate(parseDOM(html, 'p', attrs={'class': 'caption'})):
+            match = re.search(id_pattern, p)
+            if match:
+                img_id = match.group(1)
+                match = re.search(pattern.replace('img01', 'img%s' % img_id), html)
+                if match:
+                    self._photos[album_url].append({
+                        'title': '%d - %s' % (_id + 1, album_title),
+                        'album_title': album_title,
+                        'photo_id': _id,
+                        'pic': match.group(1),
+                        'description': stripTags(self._parser.unescape(p)).replace('\n                #', ''),
+                        'album_url': album_url,
+                    })
         return self._photos[album_url]
 
 
