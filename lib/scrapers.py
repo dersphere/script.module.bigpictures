@@ -37,8 +37,8 @@ ALL_SCRAPERS = (
     'SacBeeFrame',
     'WallStreetJournal',
     'TotallyCoolPix',
-    'TimeLightbox',
-    'NewYorkTimesLens',
+    # 'TimeLightbox',
+    # 'NewYorkTimesLens',
 )
 
 
@@ -157,6 +157,7 @@ class TheBigPictures(BasePlugin):
                 'album_url': album_url
             })
         return self._photos[album_url]
+
 
 class AtlanticInFocus(BasePlugin):
 
