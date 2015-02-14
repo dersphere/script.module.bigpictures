@@ -255,18 +255,11 @@ class WallStreetJournal(BasePlugin):
         self._albums = []
         url = 'http://blogs.wsj.com/photojournal/'
         tree = self._get_tree(url)
-        albums = tree.findAll('li', 'postitem imageFormat-P')
+        albums = tree.findAll('article', {'class': re.compile('post-snippet')})
         for id, album in enumerate(albums):
-            author = album.find('cite').string
-            if not author == u'By WSJ Staff':
-                continue
-            if not album.find('img'):
-                continue
-            if not album.find('h2'):
-                continue
             title = album.find('h2').a.string
             album_url = album.find('h2').a['href']
-            d = album.findAll('div', {'class': 'postContent'})[1].p
+            d = album.findAll('div', {'class': 'post-content'})[0].p
             description = self._collapse(d)
             pic = album.find('img')['src'].strip()
             self._albums.append({
@@ -291,14 +284,12 @@ class WallStreetJournal(BasePlugin):
         page_photos = []
         next_page_url = None
         tree = self._get_tree(album_url)
-        c = 'articleHeadlineBox headlineType-newswire'
-        album_title = tree.find('div', c).h1.string
-        section = tree.find('div', {'class': 'articlePage'})
-        images = section.findAll('p')
+        album_title = self._collapse(tree.find('h1', {'class': 'post-title h-main'}).contents)
+        images = tree.findAll('dl')
         for id, photo in enumerate(images):
             if not photo.find('img'):
                 continue
-            pic = photo.img['src'].strip()
+            pic = photo.find('img')['src'].strip()
             description = self._collapse(photo.contents)
             page_photos.append({
                 'title': '%d - %s' % (id + 1, album_title),
